@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "unifi2mqtt"
+version = "0.1.0"
+description = "Monitor Unifi clients and publish status to MQTT"
+authors = [
+    { name = "Your Name", email = "you@example.com" }
+]
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "requests",
+    "paho-mqtt"
+]
+
+[project.scripts]
+unifi2mqtt = "unifi2mqtt.__main__:main"
