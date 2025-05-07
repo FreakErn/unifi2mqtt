@@ -15,6 +15,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set up QEMU (for emulation of ARM architectures)
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: linux/arm/v7,linux/arm64,linux/amd64
+          
       - name: Log in to DockerHub
         uses: docker/login-action@v3
         with:
@@ -33,3 +38,4 @@ jobs:
           tags: |
             freakern/unifi2mqtt:${{ steps.get_version.outputs.VERSION }}
             freakern/unifi2mqtt:latest
+          platforms: linux/amd64,linux/arm/v7,linux/arm64
