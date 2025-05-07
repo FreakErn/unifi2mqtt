@@ -2,6 +2,7 @@ import time
 import logging
 import requests
 import paho.mqtt.client as mqtt
+from datetime import datetime
 from urllib3.exceptions import InsecureRequestWarning
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,8 @@ def run_monitor(args):
         while True:
             try:
                 logger.debug("Authenticating with UniFi Controller...")
+                logger.debug("ssl verification: " + str(args.unifi_ignore_ssl))
+
                 session.post(f"{args.unifi_url}/api/auth/login", json=auth_payload)
                 
                 for cookie in session.cookies:
@@ -49,10 +52,12 @@ def run_monitor(args):
                     name = client.get("name") or client.get("hostname") or mac
                     online = True
                     msg = {
+                        "event": "connected",
                         "mac": mac,
                         "name": name,
                         "ip": client.get("ip"),
-                        "online": online
+                        "online": True,
+                        "time": datetime.utcnow().isoformat()
                     }
 
                     topic = f"{args.mqtt_topic}/{mac.replace(':', '')}"

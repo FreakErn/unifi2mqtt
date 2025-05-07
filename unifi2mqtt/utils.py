@@ -2,6 +2,9 @@ import argparse
 import os
 import logging
 
+def str_to_bool(value):
+    return str(value).lower() in ("1", "true", "yes", "on")
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Monitor Unifi clients and publish status to MQTT")
 
@@ -14,8 +17,10 @@ def parse_args():
                         default=env_or_default("UNIFI_USER"), help="Unifi username")
     parser.add_argument("--unifi-pass", required=not bool(env_or_default("UNIFI_PASS")),
                         default=env_or_default("UNIFI_PASS"), help="Unifi password")
-    parser.add_argument("--unifi-ignore-ssl", action="store_true", help="Ignore SSL verification")
 
+    parser.add_argument( "--unifi-ignore-ssl", action="store_true",
+        help="Ignore SSL verification") # env var: UNIFI_IGNORE_SSL
+    
     parser.add_argument("--mqtt-host", required=not bool(env_or_default("MQTT_HOST")),
                         default=env_or_default("MQTT_HOST"), help="MQTT broker host")
     parser.add_argument("--mqtt-port", type=int, default=int(env_or_default("MQTT_PORT", 1883)), help="MQTT broker port")
@@ -31,6 +36,9 @@ def parse_args():
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
+
+    if not args.unifi_ignore_ssl:
+        args.unifi_ignore_ssl = str_to_bool(os.getenv("UNIFI_IGNORE_SSL", "false"))
 
     log_level = logging.ERROR
     if args.debug:
