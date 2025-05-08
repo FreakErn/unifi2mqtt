@@ -1,8 +1,9 @@
 import time
+import json
 import logging
 import requests
 import paho.mqtt.client as mqtt
-from datetime import datetime
+import datetime
 from urllib3.exceptions import InsecureRequestWarning
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ def run_monitor(args):
                 resp = session.get(f"{args.unifi_url}/proxy/network/api/s/default/stat/sta")
                 resp.raise_for_status()
                 clients = resp.json()["data"]
+                client_seen_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
                 current_macs = set()
                 for client in clients:
@@ -50,30 +52,30 @@ def run_monitor(args):
                         continue
                     current_macs.add(mac)
                     name = client.get("name") or client.get("hostname") or mac
-                    online = True
-                    msg = {
+                    msg = json.dumps({
                         "event": "connected",
                         "mac": mac,
                         "name": name,
                         "ip": client.get("ip"),
                         "online": True,
-                        "time": datetime.utcnow().isoformat()
-                    }
+                        "time": client_seen_time
+                    })
 
                     topic = f"{args.mqtt_topic}/{mac.replace(':', '')}"
-                    mqtt_client.publish(topic, payload=str(msg), qos=1, retain=True)
+                    mqtt_client.publish(topic, payload=msg, qos=1, retain=True)
                     logger.debug(f"Published online: {msg}")
 
                 # Detect disconnected
                 for mac in last_state:
                     if mac not in current_macs:
                         msg = {
+                            "event": "connected",
                             "mac": mac,
                             "name": last_state[mac],
                             "online": False
                         }
                         topic = f"{args.mqtt_topic}/{mac.replace(':', '')}"
-                        mqtt_client.publish(topic, payload=str(msg), qos=1, retain=True)
+                        mqtt_client.publish(topic, payload=msg, qos=1, retain=True)
                         logger.debug(f"Published offline: {msg}")
 
                 # Update state
