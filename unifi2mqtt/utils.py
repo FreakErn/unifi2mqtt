@@ -28,6 +28,8 @@ def parse_args():
     parser.add_argument("--mqtt-pass", default=env_or_default("MQTT_PASS"), help="MQTT password")
     parser.add_argument("--mqtt-topic", default=env_or_default("MQTT_TOPIC", "unifi2mqtt"), help="MQTT topic prefix")
     parser.add_argument("--mqtt-client-id", default=env_or_default("MQTT_CLIENT_ID", "unifi2mqtt"), help="MQTT client ID")
+    parser.add_argument("--timeout", type=int, default=env_or_default("TIMEOUT", 60), help="Timeout in seconds for last_seen (Standard: 60)")
+
 
     parser.add_argument("--filter-macs", default=env_or_default("FILTER_MACS", ""), help="Comma-separated list of MAC addresses to include")
     parser.add_argument("-i", "--interval", type=int, default=int(env_or_default("INTERVAL", 1)), help="Interval in minutes between checks")

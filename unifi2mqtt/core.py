@@ -9,6 +9,21 @@ from urllib3.exceptions import InsecureRequestWarning
 logger = logging.getLogger(__name__)
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
+def is_connected(client, timeout):
+    now = time.time()
+    last_seen = client.get("last_seen", 0)
+    logger.debug(f"Current time: {now}, last seen: {last_seen}. Device is: " + ("online" if (now - last_seen) <= timeout else "offline"))
+    return (now - last_seen) <= timeout
+
+def timestamp_to_isoformat(timestamp):
+    if timestamp is None:
+        return None
+    try:
+        dt = datetime.datetime.fromtimestamp(float(timestamp))
+        return dt.isoformat()
+    except (ValueError, OSError, TypeError):
+        return None
+
 def run_monitor(args):
     mqtt_client = mqtt.Client(client_id=args.mqtt_client_id, protocol=mqtt.MQTTv5)
     if args.mqtt_user and args.mqtt_pass:
@@ -50,15 +65,18 @@ def run_monitor(args):
                     mac = client.get("mac", "").lower()
                     if filter_macs and mac not in filter_macs:
                         continue
+                    if not is_connected(client, args.timeout):
+                        continue
                     current_macs.add(mac)
                     name = client.get("name") or client.get("hostname") or mac
                     msg = json.dumps({
                         "event": "connected",
                         "mac": mac,
                         "name": name,
+                        "last_uplink_name": client.get("last_uplink_name"),
                         "ip": client.get("ip"),
                         "online": True,
-                        "time": client_seen_time
+                        "last_seen": timestamp_to_isoformat(client.get("last_seen"))
                     })
 
                     topic = f"{args.mqtt_topic}/{mac.replace(':', '')}"
@@ -68,12 +86,12 @@ def run_monitor(args):
                 # Detect disconnected
                 for mac in last_state:
                     if mac not in current_macs:
-                        msg = {
-                            "event": "connected",
+                        msg = json.dumps({
+                            "event": "disconnected",
                             "mac": mac,
                             "name": last_state[mac],
                             "online": False
-                        }
+                        })
                         topic = f"{args.mqtt_topic}/{mac.replace(':', '')}"
                         mqtt_client.publish(topic, payload=msg, qos=1, retain=True)
                         logger.debug(f"Published offline: {msg}")

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "unifi2mqtt"
-version = "0.1.5"
+version = "0.1.6"
 description = "Monitor Unifi clients and publish status to MQTT"
 authors = [
     { name = "Dave (aka FreakErn)", email = "github@freakern.de" }
