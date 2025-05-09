@@ -12,7 +12,6 @@ requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 def is_connected(client, timeout):
     now = time.time()
     last_seen = client.get("last_seen", 0)
-    logger.debug(f"Current time: {now}, last seen: {last_seen}. Device is: " + ("online" if (now - last_seen) <= timeout else "offline"))
     return (now - last_seen) <= timeout
 
 def timestamp_to_isoformat(timestamp):
@@ -24,6 +23,40 @@ def timestamp_to_isoformat(timestamp):
     except (ValueError, OSError, TypeError):
         return None
 
+def login(session, url: str, login_payload: dict, ignore_ssl: bool):
+    login_url = f"{url.rstrip('/')}/api/auth/login"
+    logger.debug(f"Logging in to {login_url}")
+    response = session.post(
+        login_url,
+        json={
+            "username": login_payload["username"],
+            "password": login_payload["password"]
+        },
+        verify=not ignore_ssl
+    )
+    response.raise_for_status()
+    logger.info("Successfully logged in.")
+
+def fetch_clients(session, url: str, login_payload: dict, ignore_ssl: bool):
+    return _request_with_reauth(session, url, login_payload, ignore_ssl, _get_clients)
+
+def _get_clients(session, url: str, login_payload: dict, ignore_ssl: bool):
+    clients_url = f"{url.rstrip('/')}/proxy/network/api/s/default/stat/sta"
+    logger.debug(f"Fetching clients from {clients_url}")
+    response = session.get(clients_url, verify=not ignore_ssl)
+    response.raise_for_status()
+    return response.json().get("data", [])
+
+def _request_with_reauth(session, url: str, login_payload: dict, ignore_ssl: bool, action):
+    try:
+        return action(session, url, login_payload, ignore_ssl)
+    except requests.HTTPError as e:
+        if 400 <= e.response.status_code < 500:
+            logger.warning(f"HTTP {e.response.status_code} - retrying after login.")
+            login(session, url, login_payload, ignore_ssl)
+            return action(session, url, login_payload, ignore_ssl)
+        raise
+
 def run_monitor(args):
     mqtt_client = mqtt.Client(client_id=args.mqtt_client_id, protocol=mqtt.MQTTv5)
     if args.mqtt_user and args.mqtt_pass:
@@ -34,6 +67,7 @@ def run_monitor(args):
     session = requests.Session()
     if args.unifi_ignore_ssl:
         session.verify = False
+    logger.debug("ssl verification: " + str(not args.unifi_ignore_ssl))
 
     auth_payload = {
         "username": args.unifi_user,
@@ -46,18 +80,8 @@ def run_monitor(args):
     try:
         while True:
             try:
-                logger.debug("Authenticating with UniFi Controller...")
-                logger.debug("ssl verification: " + str(args.unifi_ignore_ssl))
 
-                session.post(f"{args.unifi_url}/api/auth/login", json=auth_payload)
-                
-                for cookie in session.cookies:
-                    logging.debug(f"Cookie: {cookie.name} = {cookie.value}")
-
-                logger.debug("Fetching client list...")
-                resp = session.get(f"{args.unifi_url}/proxy/network/api/s/default/stat/sta")
-                resp.raise_for_status()
-                clients = resp.json()["data"]
+                clients = fetch_clients(session, args.unifi_url, auth_payload, args.unifi_ignore_ssl)
                 client_seen_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
                 current_macs = set()
@@ -90,7 +114,8 @@ def run_monitor(args):
                             "event": "disconnected",
                             "mac": mac,
                             "name": last_state[mac],
-                            "online": False
+                            "online": False,
+                            "last_seen": timestamp_to_isoformat(client.get("last_seen"))
                         })
                         topic = f"{args.mqtt_topic}/{mac.replace(':', '')}"
                         mqtt_client.publish(topic, payload=msg, qos=1, retain=True)
@@ -105,7 +130,7 @@ def run_monitor(args):
             except requests.exceptions.RequestException as e:
                 logger.error(f"Request Exception: {e}")
 
-            time.sleep(args.interval * 60)
+            time.sleep(args.interval)
     except KeyboardInterrupt:
         logger.info("Beendet durch Benutzer (Strg+C)")
         mqtt_client.disconnect()
