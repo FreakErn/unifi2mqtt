@@ -77,6 +77,9 @@ def run_monitor(args):
         mqtt_client.username_pw_set(args.mqtt_user, args.mqtt_pass)
     mqtt_client.connect(args.mqtt_host, args.mqtt_port)
     mqtt_client.loop_start()
+    
+    if mqtt_client.is_connected():
+        logger.info(f"Successfully connected to {args.mqtt_host}")
 
     session = requests.Session()
     if args.unifi_ignore_ssl:
@@ -87,14 +90,14 @@ def run_monitor(args):
         "username": args.unifi_user,
         "password": args.unifi_pass
     }
-
+    logger.info(f"Login as {auth_payload['username']}")
 
     filter_macs = set(mac.strip().lower() for mac in args.filter_macs.split(",")) if args.filter_macs else None
     connected_clients = {}
 
     # load clients which were connected on previous run
     last_state = load_persisted_clients()
-    logger.debug(f"Loaded {len(last_state)} persisted connected clients.")
+    logger.debug(f"Loaded {len(last_state)} previous saved, connected clients.")
 
     try:
         while True:
@@ -122,10 +125,10 @@ def run_monitor(args):
                         "online": True,
                         "last_seen": timestamp_to_isoformat(client.get("last_seen"))
                     })
-
+                    
                     topic = f"{args.mqtt_topic}/{mac.replace(':', '')}"
                     mqtt_client.publish(topic, payload=msg, qos=1, retain=True)
-                    logger.debug(f"Published online: {msg}")
+                    logger.info(f"Published online: {msg}")
 
 
                 # Detect disconnected
@@ -140,7 +143,7 @@ def run_monitor(args):
                         })
                         topic = f"{args.mqtt_topic}/{mac.replace(':', '')}"
                         mqtt_client.publish(topic, payload=msg, qos=1, retain=True)
-                        logger.debug(f"Published offline: {msg}")
+                        logger.info(f"Published offline: {msg}")
 
                 # Update state
                 last_state = {client["mac"].lower(): client.get("name") or client.get("hostname") or client["mac"]
@@ -156,6 +159,6 @@ def run_monitor(args):
 
             time.sleep(args.interval)
     except KeyboardInterrupt:
-        logger.info("Beendet durch Benutzer (Strg+C)")
+        logger.info("unifi2mqtt stopped by user (Strg+C)")
         mqtt_client.disconnect()
         mqtt_client.loop_stop()

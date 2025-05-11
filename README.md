@@ -63,5 +63,6 @@ docker run --d --restart=unless-stopped --name unifi2mqtt \
     -e UNIFI_IGNORE_SSL=true \
     -e MQTT_TOPIC=unifi2mqtt \
     -e TZ=Europe/Berlin \
-    -e FILTER_MACS=aa:bb:cc:dd:ee:ff,11:22:33:44:55:66
+    -e FILTER_MACS=aa:bb:cc:dd:ee:ff,11:22:33:44:55:66 \
+    freakern/unifi2mqtt:0.2.0 -d
 ```
