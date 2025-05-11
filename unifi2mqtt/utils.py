@@ -5,8 +5,15 @@ import logging
 def str_to_bool(value):
     return str(value).lower() in ("1", "true", "yes", "on")
 
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    def __init__(self, *args, **kwargs):
+        kwargs['max_help_position'] = 38  # Standard ist 24
+        kwargs['width'] = 120             # Breite der gesamten Ausgabe
+        super().__init__(*args, **kwargs)
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Monitor Unifi clients and publish status to MQTT")
+    parser = argparse.ArgumentParser(description="Monitor Unifi clients and publish status to MQTT",
+                                     formatter_class=CustomFormatter)
 
     def env_or_default(env, default=None):
         return os.environ.get(env, default)
@@ -19,7 +26,7 @@ def parse_args():
                         default=env_or_default("UNIFI_PASS"), help="Unifi password")
 
     parser.add_argument( "--unifi-ignore-ssl", action="store_true",
-        help="Ignore SSL verification") # env var: UNIFI_IGNORE_SSL
+        help="Ignore SSL verification (env variable UNIFI_IGNORE_SSL)") # env var: UNIFI_IGNORE_SSL
     
     parser.add_argument("--mqtt-host", required=not bool(env_or_default("MQTT_HOST")),
                         default=env_or_default("MQTT_HOST"), help="MQTT broker host")
@@ -31,7 +38,7 @@ def parse_args():
     parser.add_argument("--timeout", type=int, default=env_or_default("TIMEOUT", 60), help="Timeout in seconds for last_seen (Standard: 60)")
 
 
-    parser.add_argument("--filter-macs", default=env_or_default("FILTER_MACS", ""), help="Comma-separated list of MAC addresses to include")
+    parser.add_argument("--filter-macs", default=env_or_default("FILTER_MACS", ""), help="Comma-separated list of MAC addresses to includeIf not set, you\'ll get all clients listed")
     parser.add_argument("-i", "--interval", type=int, default=int(env_or_default("INTERVAL", 60)), help="Interval in seconds between checks")
 
     parser.add_argument("-d", "--debug", action="store_true", help="Enable debug logging")

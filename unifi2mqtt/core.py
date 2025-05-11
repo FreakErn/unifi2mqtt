@@ -25,6 +25,7 @@ def save_connected_clients(mac_set):
 def is_connected(client, timeout):
     now = time.time()
     last_seen = client.get("last_seen", 0)
+    logger.debug(f"Current time: {round(now)}, last seen: {last_seen} (difference: {round(now - last_seen)}s). Device is: " + ("online" if (now - last_seen) <= timeout else "offline"))
     return (now - last_seen) <= timeout
 
 def timestamp_to_isoformat(timestamp):
