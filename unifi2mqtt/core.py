@@ -1,13 +1,26 @@
-import time
+import datetime
 import json
 import logging
+import os
 import requests
 import paho.mqtt.client as mqtt
-import datetime
+import time
 from urllib3.exceptions import InsecureRequestWarning
 
 logger = logging.getLogger(__name__)
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+
+PERSIST_FILE = "connected_clients.json"
+
+def load_persisted_clients():
+    if os.path.exists(PERSIST_FILE):
+        with open(PERSIST_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_connected_clients(mac_set):
+    with open(PERSIST_FILE, "w") as f:
+        json.dump(mac_set, f)
 
 def is_connected(client, timeout):
     now = time.time()
@@ -74,8 +87,13 @@ def run_monitor(args):
         "password": args.unifi_pass
     }
 
+
     filter_macs = set(mac.strip().lower() for mac in args.filter_macs.split(",")) if args.filter_macs else None
-    last_state = {}
+    connected_clients = {}
+
+    # load clients which were connected on previous run
+    last_state = load_persisted_clients()
+    logger.debug(f"Loaded {len(last_state)} persisted connected clients.")
 
     try:
         while True:
@@ -92,6 +110,7 @@ def run_monitor(args):
                     if not is_connected(client, args.timeout):
                         continue
                     current_macs.add(mac)
+                    connected_clients[mac] = client
                     name = client.get("name") or client.get("hostname") or mac
                     msg = json.dumps({
                         "event": "connected",
@@ -106,6 +125,7 @@ def run_monitor(args):
                     topic = f"{args.mqtt_topic}/{mac.replace(':', '')}"
                     mqtt_client.publish(topic, payload=msg, qos=1, retain=True)
                     logger.debug(f"Published online: {msg}")
+
 
                 # Detect disconnected
                 for mac in last_state:
@@ -124,6 +144,9 @@ def run_monitor(args):
                 # Update state
                 last_state = {client["mac"].lower(): client.get("name") or client.get("hostname") or client["mac"]
                               for client in clients if not filter_macs or client["mac"].lower() in filter_macs}
+                
+                # Save the clients in case the application ends
+                save_connected_clients(last_state)
 
             except requests.exceptions.HTTPError as e:
                 logger.error(f"HTTP Error: {e}")
