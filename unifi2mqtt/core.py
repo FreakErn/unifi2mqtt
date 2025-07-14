@@ -38,7 +38,7 @@ def timestamp_to_isoformat(timestamp):
         return None
 
 def login(session, url: str, login_payload: dict, ignore_ssl: bool):
-    login_url = f"{url.rstrip('/')}/api/auth/login"
+    login_url = f"{url.rstrip('/')}/api/login"
     logger.debug(f"Logging in to {login_url}")
     response = session.post(
         login_url,
