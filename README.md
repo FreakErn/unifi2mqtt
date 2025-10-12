@@ -34,11 +34,11 @@ options:
   --mqtt-topic MQTT_TOPIC             MQTT topic prefix (default: unifi2mqtt)
   --mqtt-client-id MQTT_CLIENT_ID     MQTT client ID (default: unifi2mqtt)
   --timeout TIMEOUT                   Timeout in seconds for last_seen (Standard: 60) (default: 60)
-  --filter-macs FILTER_MACS           Comma-separated list of MAC addresses to include. If not set, you'll get all
+  --filter-macs FILTER_MACS           Comma-separated list of MAC addresses to include. If not set, you\'ll get all
                                       clients listed (default: "")
   -i, --interval INTERVAL             Interval in seconds between checks (default: 60)
   --use-specific-last-seen {last_seen,_last_seen_by_uap,_last_seen_by_usw,_last_seen_by_ugw,_last_reachable_by_gw}
-                                      Comma-separated list of MAC addresses to includeIf not set, you'll get all clients
+                                      Comma-separated list of MAC addresses to includeIf not set, you\'ll get all clients
                                       listed (default: None)
   -d, --debug                         Enable debug logging (default: False)
   -v, --verbose                       Enable verbose logging (default: False)
