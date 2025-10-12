@@ -1,10 +1,9 @@
 from .core import run_monitor
 
 def main():
-    import argparse
-    from .utils import parse_args
-    args = parse_args()
-    run_monitor(args)
+    from unifi2mqtt.lib.app_argparse import parse_args
+    parse_args()
+    run_monitor()
 
 if __name__ == "__main__":
     main()
