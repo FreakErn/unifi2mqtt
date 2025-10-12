@@ -42,8 +42,9 @@ def get_last_seen_for_client(client):
     best_timestamp_key, best_timestamp = get_best_timestamp(client)
 
     if settings.verbose:
+        iso = timestamp_to_isoformat(best_timestamp) if best_timestamp is not None else 'unknown'
         logger.debug(
-            f"VERBOSE: best_timestamp_key: {best_timestamp_key}, best_timestamp: {best_timestamp} ({timestamp_to_isoformat(best_timestamp) if best_timestamp is not None else "unknown"})")
+            f"VERBOSE: best_timestamp_key: {best_timestamp_key}, best_timestamp: {best_timestamp} ({iso})")
 
     return best_timestamp
 
